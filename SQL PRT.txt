@@ -1,0 +1,96 @@
+##Q7  In the loan_data.csv, using SQL Can you create a custom UDF to calculate the debt-to-income ratio for each loan applicant?
+ 
+ -- Create a custom UDF to calculate the debt-to-income ratio
+CREATE FUNCTION calculate_dti(monthly_income REAL, monthly_debt REAL) RETURNS REAL
+AS
+BEGIN
+    DECLARE dti_ratio REAL;
+    
+    -- Calculate the debt-to-income ratio
+    IF monthly_income > 0 THEN
+        SET dti_ratio = monthly_debt / monthly_income;
+    ELSE
+        SET dti_ratio = NULL; -- Handle division by zero case
+    END IF;
+    
+    RETURN dti_ratio;
+END;
+
+-- Query to calculate DTI ratio for each loan applicant
+SELECT applicant_id, 
+       monthly_income, 
+       monthly_debt,
+       calculate_dti(monthly_income, monthly_debt) AS dti_ratio
+FROM loan_data;
+
+
+##Q8   In the loan_data.csv, using SQL find out what is the percentage share of Loans that are approved for applicants who have not graduated.
+
+-- Calculate the total number of loans approved for applicants who have not graduated
+WITH non_graduated_approved_loans AS (
+    SELECT COUNT(*) AS count_non_graduated_approved_loans
+    FROM loan_data
+    WHERE education_level <> 'Graduate' AND loan_status = 'Approved'
+),
+
+-- Calculate the total number of loans approved
+total_approved_loans AS (
+    SELECT COUNT(*) AS count_total_approved_loans
+    FROM loan_data
+    WHERE loan_status = 'Approved'
+)
+
+-- Calculate the percentage share of loans approved for applicants who have not graduated
+SELECT 
+    (CAST(count_non_graduated_approved_loans AS FLOAT) / count_total_approved_loans) * 100 AS percentage_share_non_graduated_approved_loans
+FROM 
+    non_graduated_approved_loans, total_approved_loans;
+	
+	
+	## Q9 In the loan_data.csv, using SQL Fetch information of Loans that are approved and who’s Loan Amount is greater than the Average Loan Amount of the Property Area they belong to.
+	
+	
+	-- Calculate the average loan amount for each property area
+WITH avg_loan_amount_per_area AS (
+    SELECT 
+        property_area,
+        AVG(loan_amount) AS avg_loan_amount
+    FROM 
+        loan_data
+    GROUP BY 
+        property_area
+),
+
+-- Fetch information of loans that are approved and whose loan amount is greater than the average loan amount of the property area they belong to
+approved_loans_above_avg_amount AS (
+    SELECT 
+        ld.* 
+    FROM 
+        loan_data ld
+    JOIN 
+        avg_loan_amount_per_area ala ON ld.property_area = ala.property_area
+    WHERE 
+        ld.loan_status = 'Approved'
+        AND ld.loan_amount > ala.avg_loan_amount
+)
+
+-- Select the required information from the final result
+SELECT 
+    *
+FROM 
+    approved_loans_above_avg_amount;
+
+
+
+## Q10  In the loan_data.csv, using SQL Display the percentage of each Property Area category shared in the whole data set.
+
+
+SELECT 
+    property_area,
+    COUNT(*) * 100.0 / (SELECT COUNT(*) FROM loan_data) AS percentage_share
+FROM 
+    loan_data
+GROUP BY 
+    property_area;
+
+	
